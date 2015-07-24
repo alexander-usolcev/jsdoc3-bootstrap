@@ -1,7 +1,25 @@
-The template for JSDoc 3 uses: [the Taffy Database library](http://taffydb.com/) and the [Underscore Template library](http://documentcloud.github.com/underscore/#template). and [twitter bootstrap](http://twitter.github.io/bootstrap)
+# JsDoc3 Theme
 
+A JSDoc 3 theme made with Twitter Bootstrap 3.
 
-DEMO
-=====
-http://alivedise.github.io/gaia-system-jsdoc/
+## Installing
 
+```
+$ npm install jsdoc3-bootstrap
+```
+
+## Usage
+
+Run `jsdoc` pointing to the installed theme:
+
+```
+$ jsdoc -t ./node_modules/jsdoc3-bootstrap
+```
+
+Or set the `opts.template` property in your jsdoc configuration file (see the
+[jsdoc page](http://usejsdoc.org/about-configuring-jsdoc.html) for more info)
+
+## Acknowledgment
+
+Forked from
+[alivedise/jsdoc3-bootstrap](https://github.com/alivedise/jsdoc3-bootstrap)

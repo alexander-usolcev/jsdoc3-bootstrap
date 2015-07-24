@@ -16,6 +16,10 @@ var template = require('jsdoc/template'),
     //grimbo: use ModuleHelper to trim module path off module link
     ModuleHelper = require('./ModuleHelper').ModuleHelper;
 
+var _ = require('underscore');
+
+require('dotenv').load();
+
 
 function find(spec) {
     return helper.find(data, spec);
@@ -23,6 +27,19 @@ function find(spec) {
 
 function tutoriallink(tutorial) {
     return helper.toTutorial(tutorial, null, { tag: 'em', classname: 'disabled', prefix: 'Tutorial: ' });
+}
+
+function nodeModuleFromPath(dpath)
+{
+  var re = /node_modules\/([^\/]*)\//g;
+
+  var match;
+  var dmod;
+  while (match = re.exec(dpath)) {
+    dmod = match[1];
+  }
+
+  return dmod || '';
 }
 
 function getAncestorLinks(doclet) {
@@ -83,6 +100,8 @@ function addAttribs(f) {
     var attHTML = '';
 
     attribs.forEach(function(ele) {
+        if (ele === 'abstract')
+          ele = 'virtual';
         attHTML += '<span class="label label-info">' + htmlsafe(ele) + '</span> ';
     });
 
@@ -198,113 +217,7 @@ function attachModuleSymbols(doclets, modules) {
  * @return {string} The HTML for the navigation sidebar.
  */
 function buildNav(members) {
-    var nav = '<h2><a href="index.html">Index</a></h2>',
-        seen = {},
-        hasClassList = false,
-        classNav = '';
-
-    if (members.modules.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Modules</li>';
-        //grimbo: use ModuleHelper to trim module path off module link
-        nav += new ModuleHelper(members.modules, linkto).printModules();
-        nav += '</ul></div>';
-    }
-
-    if (members.externals.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">External</li>';
-        members.externals.forEach(function(e) {
-            if ( !hasOwnProp.call(seen, e.longname) ) {
-                nav += '<li>'+linkto( e.longname, e.name.replace(/(^"|"$)/g, '') )+'</li>';
-            }
-            seen[e.longname] = true;
-        });
-
-        nav += '</ul></div>';
-    }
-
-    if (members.classes.length) {
-        members.classes.forEach(function(c) {
-            if ( !hasOwnProp.call(seen, c.longname) ) {
-                classNav += '<li>' + linkto(c.longname, '<i class="icon-shield" style="color: #0186d1"></i> ' + c.name)+'</li>';
-            }
-            seen[c.longname] = true;
-        });
-
-        if (classNav !== '') {
-            nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Classes</li>';
-            nav += classNav;
-            nav += '</ul></div>';
-        }
-    }
-
-    if (members.events.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Public Events</li>';
-        members.events.forEach(function(e) {
-            if ( !hasOwnProp.call(seen, e.longname) && !e.inherited ) {
-                if (e.access !== 'private') {
-                    nav += '<li>'+linkto(e.longname, '<i class="icon-bell-alt" style="color: yellow"></i> ' + e.name +' <span class="label label-inverse pull-right">' + e.memberof + '</span>')+'</li>';
-                    seen[e.longname] = true;
-                }
-            }
-        });
-
-        nav += '</ul></div>';
-
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Private Events</li>';
-        members.events.forEach(function(e) {
-            if ( e.access && e.access == 'private') {
-                nav += '<li>'+linkto(e.longname, '<i class="icon-bell-alt" style="color: yellow"></i> ' + e.name +' <span class="label label-inverse pull-right">' + e.memberof + '</span>')+'</li>';
-                seen[e.longname] = true;
-            }
-        });
-
-        nav += '</ul></div>';
-    }
-
-    if (members.namespaces.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Namespaces</li>';
-        members.namespaces.forEach(function(n) {
-            if ( !hasOwnProp.call(seen, n.longname) ) {
-                nav += '<li>'+linkto(n.longname, '<i class="icon-code"></i> ' + n.name)+'</li>';
-            }
-            seen[n.longname] = true;
-        });
-
-        nav += '</ul></div>';
-    }
-
-    if (members.mixins.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Mixins</li>';
-        members.mixins.forEach(function(m) {
-            if ( !hasOwnProp.call(seen, m.longname) ) {
-                nav += '<li>'+linkto(m.longname, '<i class="icon-beaker"></i> ' + m.name)+'</li>';
-            }
-            seen[m.longname] = true;
-        });
-
-        nav += '</ul></div>';
-    }
-
-    if (members.tutorials.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Tutorials</li>';
-        members.tutorials.forEach(function(t) {
-            nav += '<li>'+tutoriallink(t.name)+'</li>';
-        });
-
-        nav += '</ul></div>';
-    }
-
-    if (members.globals.length) {
-        nav += '<div class="well well-small"><ul class="nav nav-list"><li class="nav-header">Global</li>';
-        members.globals.forEach(function(g) {
-            if ( g.kind !== 'typedef' && !hasOwnProp.call(seen, g.longname) ) {
-                nav += '<li>'+linkto(g.longname, '<i class="icon-globe" style="color: black;"></i> ' + g.name)+'</li>';
-            }
-            seen[g.longname] = true;
-        });
-
-        nav += '</ul></div>';
-    }
+    var nav = '';
 
     return nav;
 }
@@ -384,8 +297,13 @@ exports.publish = function(taffyData, opts, tutorials) {
 
     // update outdir if necessary, then create outdir
     var packageInfo = ( find({kind: 'package'}) || [] ) [0];
+    rootdir = outdir;
     if (packageInfo && packageInfo.name) {
-        outdir = path.join(outdir, packageInfo.name, packageInfo.version);
+        rootdir = outdir;
+
+        // Ignore patch number on versions
+        var version = packageInfo.version.replace(/\.[^.]+$/, '');
+        outdir = path.join(outdir, packageInfo.name, version);
     }
     fs.mkPath(outdir);
 
@@ -410,6 +328,10 @@ exports.publish = function(taffyData, opts, tutorials) {
         var docletPath;
         if (doclet.meta) {
             docletPath = getPathFromDoclet(doclet);
+
+            // probably needs to be handled better here...
+            if (!sourceFiles[docletPath]) return;
+
             docletPath = sourceFiles[docletPath].shortened;
             if (docletPath) {
                 doclet.meta.filename = docletPath;
@@ -448,6 +370,14 @@ exports.publish = function(taffyData, opts, tutorials) {
             addAttribs(doclet);
             doclet.kind = 'member';
         }
+
+        if (doclet.meta && doclet.meta.path) {
+          doclet.meta.moduleName =
+            nodeModuleFromPath(doclet.meta.path) ||
+            packageInfo.name ||
+            '';
+        }
+
     });
 
     var members = helper.getMembers(data);
@@ -461,6 +391,63 @@ exports.publish = function(taffyData, opts, tutorials) {
     view.htmlsafe = htmlsafe;
     //grimbo: pass the conf to the template.
     view.outputSourceReference = (true === conf['default'].outputSourceReference);
+    view.packageInfo = packageInfo;
+    view.docdir = require('path').relative(rootdir, outdir);
+    view.members = members;
+
+    var gclasses = _.groupBy(members.classes, function(m) {
+      return (m && m.meta && m.meta.moduleName) || '';
+    });
+
+    var gevents = _.groupBy(members.events, function(m) {
+      return (m && m.meta && m.meta.moduleName) || '';
+    });
+
+    var byModuleName = {};
+
+    function addThing(m) {
+      var mname = m && m.meta && m.meta.moduleName || '';
+      var mods = byModuleName[mname];
+      if (!mods) mods = byModuleName[mname] = [];
+      mods.push(m);
+    }
+
+    members.classes.forEach(addThing);
+    /*
+    members.events.forEach(addThing);
+    find({ kind: 'member', isEnum: true }).forEach(addThing);
+    find({ kind: 'function', scope: 'static' }).forEach(addThing);
+    */
+
+    // convert to sorted array
+    var sortedModules = [];
+    for (var mname in byModuleName) {
+      var things = byModuleName[mname];
+      var entry = {
+        name: mname,
+        things: _.sortBy(things, function(x) { return x.name; })
+      };
+
+      // Add additional things
+      things.forEach(function(thing) {
+        var subthings = thing._subthings = [];
+
+        thing._subthings = []
+          .concat(find({ kind: 'event', memberof: thing.longname  }))
+          .concat(find({ kind: 'function', scope: 'static', memberof: thing.longname  }))
+          .concat(find({ kind: 'member', isEnum: true, memberof: thing.longname  }))
+          ;
+
+      });
+
+      sortedModules.push(entry);
+    }
+    sortedModules = _.sortBy(sortedModules, function(x) { return x.name; });
+    view.sortedModules = sortedModules;
+
+    view.pageTitle = packageInfo.name ?
+      packageInfo.name + ' v' + packageInfo.version :
+      'Documentation';
 
     // once for all
     view.nav = buildNav(members);
@@ -496,7 +483,7 @@ exports.publish = function(taffyData, opts, tutorials) {
         if ( hasOwnProp.call(helper.longnameToUrl, longname) ) {
             var myClasses = helper.find(classes, {longname: longname});
             if (myClasses.length) {
-                generate('<i class="icon-shield" style="color:#0186d1"></i> ' + myClasses[0].name, myClasses, helper.longnameToUrl[longname]);
+                generate(myClasses[0].name, myClasses, helper.longnameToUrl[longname]);
             }
 
             var myModules = helper.find(modules, {longname: longname});
