@@ -55,6 +55,12 @@
   color: #fff;
   text-shadow: 0 0 10px rgba(255,255,255,.25);
 }
+.optional:after {
+  content: 'opt';
+  color: #AAAAAA;
+  font-size: 14px;
+  font-style: italic;
+}
 
 /* Download button */
 .masthead .btn {
